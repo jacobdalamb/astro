@@ -286,29 +286,6 @@ async function updateDOM(
 		triggerEvent('astro:after-swap');
 	};
 
-	// Wait on links to finish, to prevent FOUC
-	const links: Promise<any>[] = [];
-	for (const el of newDocument.querySelectorAll('head link[rel=stylesheet]')) {
-		// Do not preload links that are already on the page.
-		if (
-			!document.querySelector(
-				`[${PERSIST_ATTR}="${el.getAttribute(PERSIST_ATTR)}"], link[rel=stylesheet]`
-			)
-		) {
-			const c = document.createElement('link');
-			c.setAttribute('rel', 'preload');
-			c.setAttribute('as', 'style');
-			c.setAttribute('href', el.getAttribute('href')!);
-			links.push(
-				new Promise<any>((resolve) => {
-					['load', 'error'].forEach((evName) => c.addEventListener(evName, resolve));
-					document.head.append(c);
-				})
-			);
-		}
-	}
-	links.length && (await Promise.all(links));
-
 	if (fallback === 'animate') {
 		// Trigger the animations
 		const currentAnimations = document.getAnimations();
@@ -355,6 +332,10 @@ async function transition(
 	newDocument.querySelectorAll('noscript').forEach((el) => el.remove());
 
 	if (!newDocument.querySelector('[name="astro-view-transitions-enabled"]')) {
+		// The new page does not have View Transitions
+		// We could navigate to that page, but we can not come back
+		// if some one presses F5 there or navigates to some other page w/o view transitions
+		// therefore we do normal browser navigation instead of view transitions
 		location.href = href;
 		return;
 	}
